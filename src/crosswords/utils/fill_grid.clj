@@ -25,11 +25,13 @@
   into a grid in 6 different ways, including `CATOFNINETAILS (14)` and
   `CATOFNINE TAILS (9,5). Given a word or phrase, this function retuns
   all possible ways of splitting it up."
-  [s]
-  (let [words (str/split (normalize s) #"\s")]
-    (filter (fn [xs]
-              (every? (comp (partial < 2) count) xs))
-            (expand-combinations words))))
+  ([s]
+   (phrase-combinations s 3))
+  ([s min-word-len]
+   (let [words (str/split (normalize s) #"\s")]
+     (filter (fn [xs]
+               (every? (comp (partial <= min-word-len) count) xs))
+             (expand-combinations words)))))
 
 (defn word-groups
   "Given a list of words or phrases, this function returns the
