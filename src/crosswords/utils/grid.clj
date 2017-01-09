@@ -1,27 +1,19 @@
 (ns crosswords.utils.grid
-  (:require [clojure.core.logic :refer [lvar lvar?]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [crosswords.utils.io :refer [file-or-resource]]
             [clojure.java.io :as io]))
 
-(defn parse-grid-row
-  [s]
-  (mapv (fn [c]
-          (case c
-            \$ \$
-            \. (lvar)
-            c))
-        s))
+(defn black? [c] (= c \$))
+
+(defn unfilled? [c] (= c \.))
 
 (defn parse-grid
   [s]
-  (mapv parse-grid-row (str/split-lines s)))
+  (mapv vec (str/split-lines s)))
 
 (defn transpose
   [xs]
   (apply (partial map vector) xs))
-
-(defn black? [c] (= c \$))
 
 (defn row-word-groups
   "Extract the runs of two or more letters from a row."
@@ -44,7 +36,7 @@
 
 (defn complete?
   [xs]
-  (not-any? lvar? xs))
+  (not-any? unfilled? xs))
 
 (defn words-to-complete
   [cells]

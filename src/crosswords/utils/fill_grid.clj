@@ -49,7 +49,7 @@
   [grid words]
   (let [grid-freqs (grid/word-frequencies grid)
         word-freqs (frequencies (map count words))]
-    (every? (fn [word-len word-count]
+    (every? (fn [[word-len word-count]]
               (>= (get grid-freqs word-len 0) word-count))
             word-freqs)))
 
