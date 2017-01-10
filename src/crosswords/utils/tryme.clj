@@ -53,8 +53,77 @@
                  (or (empty? rows) (grid/black? (get-in m [col row]))))
                (partition-by (fn [row] (grid/black? (get-in m [col row]))) row-names))))
 
-(defn word-groups
+(defn grid-words
   [grid]
   (concat
    (mapcat (partial get-words-in-row m) row-names)
    (mapcat (partial get-words-in-col m) col-names)))
+
+(defn word-fits?
+  [grid word cells]
+  (and (= (count word) (count cells))
+       (every? true? (map (fn [char [col row]]
+                            (let [v (get-in grid [col row])]
+                              (or (nil? v) (= v char))))
+                          word cells))))
+
+(defn assign-word-to-grid
+  [grid word]
+  (map (fn [cells]
+         (reduce (fn [grid [col row char]]
+                   (assoc-in grid [col row] char))
+                 grid
+                 (map (fn [cell char] (conj cell char)) cells word)))
+       (filter (partial word-fits? grid word)(grid-words grid))))
+
+(defn next-filled-grid
+  [stack]
+  (loop [stack stack]
+    (if (empty? stack)
+      nil
+      (let [{:keys [word-groups grid]} (peek stack)]
+        (if (empty? word-groups)
+          [grid (pop stack)]
+          (let [[w & ws] word-groups]
+            (recur (into (pop stack)
+                         (map (fn [grid]
+                                {:grid grid :word-groups ws})
+                              (assign-word-to-grid grid w))))))))))
+
+(defn fill-grid
+  [{:keys [word-groups grid] :as candidate}]
+  (letfn [(step [stack]
+            (lazy-seq
+             (if-let [[grid stack] (next-filled-grid stack)]
+               (cons grid (step stack)))))]
+    (step [(update candidate :grid grid->map)])))
+
+#_(defn fill-grid
+  [{:keys [word-groups grid] :as candidate}]
+  (loop [stack [candidate] accum []]
+    (if (empty? stack)
+      accum
+      (let [{:keys [word-groups grid]} (peek stack)]
+        (if (empty? word-groups)
+          (recur (pop stack) (conj accum grid))
+          (let [[w & ws] word-groups
+                next-grids (assign-word-to-grid grid w)]
+            (if (empty? next-grids)
+              (recur (pop stack) accum)
+              (recur (into (pop stack)
+                           (map (fn [grid] {:grid grid :word-groups ws}))
+                           next-grids)
+                     accum))))))))
+
+
+
+(comment
+  (def candidate (first candidates))
+  (def w (first (:word-groups candidate)))
+  (word-fits? (:grid candidate) w (nth (grid-words grid) 1))
+  (assign-word-to-grid (grid->map (:grid candidate)) w)
+
+
+  (first (fill-grid (update candidate :grid grid->map)))
+
+  )
