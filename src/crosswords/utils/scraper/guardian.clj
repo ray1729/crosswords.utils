@@ -16,7 +16,7 @@
   an Enlive HTML resource."
   (memoize
    (fn [n]
-     (Thread/sleep (rand-int 10000))
+     (Thread/sleep (rand-int 1000))
      (html/html-resource (crossword-url n)))))
 
 (defn parse-row
@@ -89,8 +89,8 @@
       (recur (dec n) c))))
 
 (defn write-grids
-  [grids dir]
-  (loop [ix 1 grids (seq grids)]
+  [grids dir n]
+  (loop [ix n grids (seq grids)]
     (when grids
       (spit (io/file dir (format "%04d.txt" ix)) (first grids))
       (recur (inc ix) (next grids)))))
