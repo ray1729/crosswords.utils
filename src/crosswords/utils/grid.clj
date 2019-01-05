@@ -39,6 +39,14 @@
                    (conj (map #(vector % col) (take-while #(not (black? (get-cell grid % col))) (iterate inc row))))))
                (for [row (range (count grid)) col (range (count (first grid)))] [row col])))
 
+(defn words
+  [grid]
+  (into #{}
+        (comp
+         (map (partial get-cells grid))
+         (map (partial apply str)))
+        (word-groups grid)))
+
 (defn complete?
   [grid coords]
   (not-any? unfilled? (get-cells grid coords)))
