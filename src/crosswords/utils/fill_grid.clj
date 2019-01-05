@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [clojure.math.combinatorics :as combo]
             [crosswords.utils.grid :as grid]
-            [crosswords.utils.string :refer [normalize]]))
+            [crosswords.utils.string :refer [normalize]]
+            [medley.core :as medley]))
 
 (defn expand-combinations
   "Helper function for generating possbile word groups for a single
@@ -61,4 +62,40 @@
   (for [words (word-groups words-or-phrases)
         grid  grids
         :when (viable-grid? grid words)]
-    {:word-groups words :grid grid}))
+    {:words words :grid grid}))
+
+(defn try-assign
+  "Attempt to assign a word to a grid at the specified cell
+  coordinates. Returns updated grid if successful, otherwise nil."
+  [grid word cells]
+  (reduce (fn [grid [char [row col]]]
+            (let [cell (grid/get-cell grid row col)]
+              (cond
+                (grid/unfilled? cell) (assoc-in grid [row col] char)
+                (= cell char)         grid
+                :else                 (reduced nil))))
+          grid
+          (map vector word cells)))
+
+(defn try-grid
+  "Return all the possible ways (if any) of arranging words in grid."
+  [{:keys [words grid]}]
+  (loop [frontier [{:words words :grid grid :coords (medley/map-vals set (group-by count (grid/word-groups grid)))}]
+         solutions []]
+    (if (empty? frontier)
+      solutions
+      (let [{:keys [words grid coords]} (peek frontier)]
+        (if (empty? words)
+          (recur (pop frontier) (conj solutions grid))
+          (let [w (first words)
+                n (count w)]
+            (recur (into (pop frontier)
+                         (keep (fn [c]
+                                 (when-let [grid (try-assign grid w c)]
+                                   {:words (rest words) :grid grid :coords (update coords n disj c)}))
+                               (get coords n)))
+                   solutions)))))))
+
+(defn assign-words
+  [words grids]
+  (mapcat try-grid (candidate-grids words grids)))

@@ -11,34 +11,39 @@
   [s]
   (mapv vec (str/split-lines s)))
 
-(defn transpose
-  [xs]
-  (apply (partial map vector) xs))
-
-(defn row-word-groups
-  "Extract the runs of two or more letters from a row."
-  [row]
-  (into []
-        (comp
-         (remove (comp black? first))
-         (remove #(<= (count %) 2))
-         (map vec))
-        (partition-by black? row)))
-
-(defn word-groups
-  [cells]
-  (concat (mapcat row-word-groups cells)
-          (mapcat row-word-groups (transpose cells))))
-
 (defn read-grid
   [s]
   (parse-grid (slurp (file-or-resource s))))
 
-(defn complete?
-  [xs]
-  (not-any? unfilled? xs))
+(defn get-cell
+  [grid row col]
+  (get-in grid [row col] \$))
 
-(defn words-to-complete
+(defn get-cells
+  [grid coords]
+  (map (fn [[row col]] (get-cell grid row col)) coords))
+
+(defn word-groups
+  "Returns a list of lists of coordinates of words in the grid."
+  [grid]
+  (mapcat (fn [[row col]]
+                 (cond-> []
+                   (and (black? (get-cell grid row (dec col)))
+                        (not (black? (get-cell grid row col)))
+                        (not (black? (get-cell grid row (inc col)))))
+                   (conj (map #(vector row %) (take-while #(not (black? (get-cell grid row %))) (iterate inc col))))
+
+                   (and (black? (get-cell grid (dec row) col))
+                        (not (black? (get-cell grid row col)))
+                        (not (black?  (get-cell grid (inc row) col))))
+                   (conj (map #(vector % col) (take-while #(not (black? (get-cell grid % col))) (iterate inc row))))))
+               (for [row (range (count grid)) col (range (count (first grid)))] [row col])))
+
+(defn complete?
+  [grid coords]
+  (not-any? unfilled? (get-cells grid coords)))
+
+#_(defn words-to-complete
   [cells]
   (remove complete? (word-groups cells)))
 
@@ -52,20 +57,8 @@
 
 (defn read-grids
   [dir]
-  (into {}
+  (into []
         (comp
          (filter (memfn isFile))
-         (map (juxt (memfn getName) read-grid)))
+         (map read-grid))
         (file-seq (io/file dir))))
-
-(comment
-
-  (def xs (read-grids "dev-resources/grids"))
-
-  (def x (first (vals xs)))
-
-  (def freqs (frequencies (map word-frequencies (vals xs))))
-
-  (clojure.pprint/pprint freqs)
-
-  )
