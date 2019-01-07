@@ -1,6 +1,7 @@
 (ns crosswords.utils.fill-grid
   (:require [clojure.string :as str]
             [clojure.math.combinatorics :as combo]
+            [crosswords.utils.dictionary :as dict]
             [crosswords.utils.grid :as grid]
             [crosswords.utils.string :refer [normalize]]
             [medley.core :as medley]))
@@ -80,25 +81,6 @@
 (defn try-grid
   "Return all the possible ways (if any) of arranging words in grid."
   [{:keys [words grid]}]
-  (loop [frontier [{:words words :grid grid :coords (medley/map-vals set (group-by count (grid/word-groups grid)))}]
-         solutions []]
-    (if (empty? frontier)
-      solutions
-      (let [{:keys [words grid coords]} (peek frontier)]
-        (if (empty? words)
-          (recur (pop frontier) (conj solutions grid))
-          (let [w (first words)
-                n (count w)]
-            (recur (into (pop frontier)
-                         (keep (fn [c]
-                                 (when-let [grid (try-assign grid w c)]
-                                   {:words (rest words) :grid grid :coords (update coords n disj c)}))
-                               (get coords n)))
-                   solutions)))))))
-
-(defn try-grid-lazy
-  "Return all the possible ways (if any) of arranging words in grid."
-  [{:keys [words grid]}]
   (letfn [(try-grid [frontier]
             (when (seq frontier)
               (let [{:keys [words grid coords]} (peek frontier)]
@@ -115,7 +97,28 @@
                 :grid   grid
                 :coords (medley/map-vals set (group-by count (grid/word-groups grid)))}])))
 
-
 (defn assign-words
+  "Return all the ways of fitting words into the given grids."
   [words grids]
   (mapcat try-grid (candidate-grids words grids)))
+
+(defn complete-grid
+  "Given a grid and a dictionary, return all the ways of completing
+  the grid with dictionary words."
+  [dict grid]
+  (letfn [(complete-grid [frontier]
+            (when (seq frontier)
+              (let [{:keys [grid todo]} (peek frontier)]
+                (if (empty? todo)
+                  (cons grid (lazy-seq (complete-grid (pop frontier))))
+                  (let [coords (first todo)
+                        cells (grid/get-cells grid coords)]
+                    (if (not-any? grid/unfilled? cells)
+                      (if (dict/has? dict cells)
+                        (recur (conj (pop frontier) {:grid grid :todo (rest todo)}))
+                        (recur (pop frontier)))
+                      (recur (into (pop frontier)
+                                   (map (fn [word] {:grid (try-assign grid word coords)
+                                                    :todo (rest todo)}))
+                                   (dict/matches dict cells)))))))))]
+    (complete-grid [{:grid grid :todo (remove (partial grid/complete? grid) (grid/word-groups grid))}])))

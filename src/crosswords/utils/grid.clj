@@ -1,7 +1,8 @@
 (ns crosswords.utils.grid
   (:require [clojure.string :as str]
             [crosswords.utils.io :refer [file-or-resource]]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io])
+  (:refer-clojure :exclude [print]))
 
 (defn black? [c] (= c \$))
 
@@ -57,7 +58,7 @@
 
 (defn grid->string
   [cells]
-  (str/join \newline (map (partial str/join "") cells)))
+  (str/join \newline (map (partial str/join " ") cells)))
 
 (defn word-frequencies
   [cells]
@@ -70,3 +71,8 @@
          (filter (memfn isFile))
          (map read-grid))
         (file-seq (io/file dir))))
+
+(defn print
+  [grid]
+  (println)
+  (println (grid->string grid)))
