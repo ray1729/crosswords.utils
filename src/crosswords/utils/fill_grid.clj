@@ -96,6 +96,26 @@
                                (get coords n)))
                    solutions)))))))
 
+(defn try-grid-lazy
+  "Return all the possible ways (if any) of arranging words in grid."
+  [{:keys [words grid]}]
+  (letfn [(try-grid [frontier]
+            (when (seq frontier)
+              (let [{:keys [words grid coords]} (peek frontier)]
+                (if (empty? words)
+                  (cons grid (lazy-seq (try-grid (pop frontier))))
+                  (let [w (first words)
+                        n (count w)]
+                    (recur (into (pop frontier)
+                                 (keep (fn [c]
+                                         (when-let [grid (try-assign grid w c)]
+                                           {:words (rest words) :grid grid :coords (update coords n disj c)}))
+                                       (get coords n)))))))))]
+    (try-grid [{:words  words
+                :grid   grid
+                :coords (medley/map-vals set (group-by count (grid/word-groups grid)))}])))
+
+
 (defn assign-words
   [words grids]
   (mapcat try-grid (candidate-grids words grids)))

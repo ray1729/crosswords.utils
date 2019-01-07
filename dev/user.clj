@@ -43,10 +43,31 @@
                            (dict/matches dict cells))
                      solutions))))))))
 
+(defn complete-grid-lazy
+  [grid dict]
+  (letfn [(complete-grid [frontier]
+            (when (seq frontier)
+              (let [{:keys [grid todo]} (peek frontier)]
+                (if (empty? todo)
+                  (cons grid (lazy-seq (complete-grid (pop frontier))))
+                  (let [coords (first todo)
+                        cells (g/get-cells grid coords)]
+                    (if (not-any? g/unfilled? cells)
+                      (if (dict/has? dict cells)
+                        (recur (conj (pop frontier) {:grid grid :todo (rest todo)}))
+                        (recur (pop frontier)))
+                      (recur (into (pop frontier)
+                                   (map (fn [word] {:grid (fg/try-assign grid word coords)
+                                                    :todo (rest todo)}))
+                                   (dict/matches dict cells)))))))))]
+    (complete-grid [{:grid grid :todo (remove (partial g/complete? grid) (g/word-groups grid))}])))
+
 (comment
   (count (try-find-grids "ft16056.txt"))
 
-  (def xs (mapcat #(complete-grid % dict) (fg/assign-words (remove #{"BEHIND" "ACROBATIC" "APHID"} words) grids)))
+  (def xs (mapcat #(complete-grid-lazy % dict)
+                  (fg/assign-words (remove #{"BEHIND" "ACROBATIC" "APHID"} words)
+                                   grids)))
 
-  (run! (comp println g/grid->string) xs)
+  (run! (comp println println g/grid->string) xs)
   )
